@@ -301,31 +301,28 @@ export default function CollageCreator() {
           {[0, 1, 2].map((index) => (
             <div key={index} className={index !== 2 ? "border-b border-border" : ""}>
               {images[index] ? (
-                <div className="relative group">
+                <div className="relative group h-32 bg-muted/30">
                   <img
                     src={images[index]!.preview}
                     alt={`Image ${index + 1}`}
-                    className="h-32 w-full object-cover"
-                    style={{
-                      objectPosition: `${50 + images[index]!.cropOffset.x * 25}% ${50 + images[index]!.cropOffset.y * 25}%`
-                    }}
+                    className="h-full w-full object-contain"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/20">
                     <button
                       onClick={() => setEditingIndex(index)}
-                      className="rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
+                      className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80 transition-colors"
                       aria-label="Adjust crop"
                     >
-                      <Move className="h-3.5 w-3.5" />
+                      <Move className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => removeImage(index)}
+                      className="rounded-full bg-black/60 p-2 text-white hover:bg-black/80 transition-colors"
+                      aria-label="Remove image"
+                    >
+                      <X className="h-4 w-4" />
                     </button>
                   </div>
-                  <button
-                    onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    aria-label="Remove image"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
                 </div>
               ) : (
                 <label className="flex h-32 cursor-pointer items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
