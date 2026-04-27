@@ -188,12 +188,10 @@ export default function CollageCreator() {
           ))}
         </div>
 
-        {/* Hier wurde der flex-col Container für die mittige Ausrichtung hinzugefügt */}
         <div className="shrink-0 flex flex-col items-center w-full">
           <Button
             onClick={downloadCollage}
-            // Feste Breite/Höhe und p-0 für einen perfekten Kreis
-            className="rounded-full h-12 w-12 mt-3"
+            className="rounded-full h-12 w-12 mt-4 md:mt-6"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >
             <Download className="h-6 w-6" />
