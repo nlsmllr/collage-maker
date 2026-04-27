@@ -196,12 +196,6 @@ export default function CollageCreator() {
           >
             <Download className="h-12 w-12" />
           </Button>
-
-          {isGenerating && (
-            <p className="text-center text-sm text-muted-foreground mt-2 md:mt-4">
-              Creating...
-            </p>
-          )}
         </div>
 
         <canvas ref={canvasRef} className="hidden" />
