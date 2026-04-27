@@ -167,7 +167,7 @@ export default function CollageCreator() {
                   <img
                     src={images[index]!.preview}
                     alt={`Image ${index + 1}`}
-                    className="h-32 w-full object-cover"
+                    className="h-full w-full object-cover"
                   />
                   <button
                     onClick={() => removeImage(index)}
