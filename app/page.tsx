@@ -150,7 +150,7 @@ export default function CollageCreator() {
   return (
     <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-[min(100%,350px)] flex flex-col h-full max-h-[850px] justify-center">
-        <h1 className="text-3xl md:text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
+        <h1 className="text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
           Collage a trois
         </h1>
 
@@ -194,7 +194,7 @@ export default function CollageCreator() {
             className="rounded-full h-12 w-12 mt-4 md:mt-6"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >
-            <Download className="h-8 w-8" />
+            <Download className="h-12 w-12" />
           </Button>
 
           {isGenerating && (
