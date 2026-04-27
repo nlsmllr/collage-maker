@@ -148,7 +148,6 @@ export default function CollageCreator() {
   }
 
   return (
-    // fixed inset-0 und overflow-hidden verhindern das Scrollen auf der gesamten Seite
     <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-[min(100%,350px)] flex flex-col h-full max-h-[850px] justify-center">
         <h1 className="text-3xl md:text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
@@ -189,14 +188,17 @@ export default function CollageCreator() {
           ))}
         </div>
 
-        <div className="shrink-0">
+        {/* Hier wurde der flex-col Container für die mittige Ausrichtung hinzugefügt */}
+        <div className="shrink-0 flex flex-col items-center w-full">
           <Button
             onClick={downloadCollage}
-            className="rounded-full mt-4 md:mt-6"
-            size="lg"
+            // Feste Breite/Höhe und p-0 für einen perfekten Kreis
+            className="rounded-full h-16 w-16 p-0 mt-4 md:mt-6"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >
-            <Download className="mr-2 h-4 w-4" /></Button>
+            {/* mr-2 entfernt, damit es mittig sitzt */}
+            <Download className="h-6 w-6" />
+          </Button>
 
           {isGenerating && (
             <p className="text-center text-sm text-muted-foreground mt-2 md:mt-4">
