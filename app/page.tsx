@@ -107,12 +107,37 @@ export default function CollageCreator() {
     }
   }
 
-  const downloadCollage = () => {
+  const downloadCollage = async () => {
     if (!collageUrl) return
+
+    // Convert data URL to blob for better mobile support
+    const response = await fetch(collageUrl)
+    const blob = await response.blob()
+    const file = new File([blob], "collage-9x16.png", { type: "image/png" })
+
+    // Try Web Share API first (works great on mobile)
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: "Collage",
+        })
+        return
+      } catch (err) {
+        // User cancelled or share failed, fall through to download
+        if ((err as Error).name === "AbortError") return
+      }
+    }
+
+    // Fallback: create blob URL and download
+    const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.download = "collage-9x16.png"
-    link.href = collageUrl
+    link.href = blobUrl
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(blobUrl)
   }
 
   const allImagesUploaded = images.every((img) => img !== null)
