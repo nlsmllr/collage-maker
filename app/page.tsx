@@ -192,7 +192,7 @@ export default function CollageCreator() {
         <div className="shrink-0">
           <Button
             onClick={downloadCollage}
-            className="w-full rounded-full mt-4 md:mt-6"
+            className="rounded-full mt-4 md:mt-6"
             size="lg"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >
