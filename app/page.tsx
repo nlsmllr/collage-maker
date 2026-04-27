@@ -60,8 +60,8 @@ export default function CollageCreator() {
     if (!ctx) return
 
     // 9:16 aspect ratio - high resolution output
-    const collageWidth = 2500
-    const collageHeight = 4444
+    const collageWidth = 1800
+    const collageHeight = 3200
     const imageHeight = collageHeight / 3
 
     canvas.width = collageWidth
