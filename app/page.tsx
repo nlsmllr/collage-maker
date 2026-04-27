@@ -147,59 +147,61 @@ export default function CollageCreator() {
     prevAllUploaded.current = false
   }
 
-  return (
-    <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-[min(100%,350px)] flex flex-col h-full max-h-[850px] justify-center">
-        <h1 className="text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
-          Collage a trois
-        </h1>
+return (
+    <main className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-[320px]">
+        <div className="mb-8 text-center">
+          <h1 className="text-xl font-light tracking-[0.2em] text-zinc-900 uppercase">Collage a trois</h1>
+          <p className="text-xs text-zinc-400 mt-2 tracking-wide uppercase">Select three photos to combine</p>
+        </div>
 
-        <div className="rounded-2xl overflow-hidden border border-border bg-card w-full aspect-[9/16] flex flex-col shrink">
+        <div className="grid grid-rows-3 gap-3 aspect-[9/16] w-full">
           {[0, 1, 2].map((index) => (
-            <div key={index} className={`relative flex-1 ${index !== 2 ? "border-b border-border" : ""}`}>
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="relative rounded-2xl overflow-hidden bg-white border border-zinc-200 shadow-sm group"
+            >
               {images[index] ? (
-                <div className="absolute inset-0 group">
-                  <img
-                    src={images[index]!.preview}
-                    alt={`Image ${index + 1}`}
-                    className="h-full w-full object-cover"
-                  />
+                <div className="absolute inset-0">
+                  <img src={images[index]!.preview} alt="Preview" className="h-full w-full object-cover" />
                   <button
                     onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                    aria-label="Remove image"
+                    className="absolute top-3 right-3 p-1.5 rounded-full bg-white/90 text-zinc-900 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
-                <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <Plus className="h-5 w-5 text-muted-foreground/50" />
-                  <input
-                    ref={(el) => { fileInputRefs.current[index] = el }}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(index, e)}
-                    className="hidden"
-                  />
+                <label className="absolute inset-0 flex flex-col items-center justify-center cursor-pointer hover:bg-zinc-50 transition-colors">
+                  <Plus className="h-6 w-6 text-zinc-300" />
+                  <input type="file" className="hidden" accept="image/*" onChange={(e) => handleFileChange(index, e)} />
                 </label>
               )}
-            </div>
+            </motion.div>
           ))}
         </div>
 
-        <div className="shrink-0 flex flex-col items-center w-full">
-          <Button
-            onClick={downloadCollage}
-            className="rounded-full h-12 w-12 mt-4 md:mt-6"
-            disabled={!allImagesUploaded || isGenerating || !collageUrl}
-          >
-            <Download className="h-12 w-12" />
-          </Button>
+        <div className="mt-8 flex justify-center">
+          <AnimatePresence>
+            {collageUrl && !isGenerating && (
+              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+                <Button 
+                  onClick={downloadCollage}
+                  className="rounded-full h-14 w-14 bg-zinc-900 hover:bg-black shadow-lg"
+                >
+                  <Download className="h-6 w-6 text-white" />
+                </Button>
+              </motion.div>
+            )}
+            {isGenerating && (
+              <Loader2 className="h-10 w-10 animate-spin text-zinc-400" />
+            )}
+          </AnimatePresence>
         </div>
-
-        <canvas ref={canvasRef} className="hidden" />
       </div>
+      <canvas ref={canvasRef} className="hidden" />
     </main>
-  )
+  );
 }
