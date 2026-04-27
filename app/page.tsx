@@ -191,7 +191,7 @@ export default function CollageCreator() {
         <div className="shrink-0 flex flex-col items-center w-full">
           <Button
             onClick={downloadCollage}
-            className="rounded-3xl h-12 w-full font-bold uppercase mt-4 md:mt-6"
+            className="rounded-3xl h-12 w-full font-semibold uppercase mt-4 md:mt-6"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >Download
           </Button>
