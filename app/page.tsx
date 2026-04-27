@@ -193,8 +193,7 @@ export default function CollageCreator() {
             onClick={downloadCollage}
             className="rounded-full h-12 w-12 mt-4 md:mt-6"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
-          >
-            <Download className="h-12 w-12" />
+          >Download
           </Button>
         </div>
 
