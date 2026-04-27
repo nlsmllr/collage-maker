@@ -153,7 +153,7 @@ export default function CollageCreator() {
   }
 
   return (
-    <main className="min-h-screen bg-background flex items-center justify-center p-6">
+    <main className="bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <h1 className="text-xl font-semibold tracking-tight text-foreground mb-6 text-center">
           Collage
