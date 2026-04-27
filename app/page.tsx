@@ -151,7 +151,7 @@ export default function CollageCreator() {
     // fixed inset-0 und overflow-hidden verhindern das Scrollen auf der gesamten Seite
     <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-[min(100%,350px)] flex flex-col h-full max-h-[850px] justify-center">
-        <h1 className="text-2xl md:text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
+        <h1 className="text-4xl md:text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
           Collage a trois
         </h1>
 
@@ -192,7 +192,7 @@ export default function CollageCreator() {
         <div className="shrink-0">
           <Button
             onClick={downloadCollage}
-            className="w-full rounded-4xl mt-4 md:mt-6"
+            className="w-full rounded-3xl mt-4 md:mt-6"
             size="lg"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >
