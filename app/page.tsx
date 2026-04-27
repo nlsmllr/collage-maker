@@ -193,7 +193,7 @@ export default function CollageCreator() {
           <Button
             onClick={downloadCollage}
             // Feste Breite/Höhe und p-0 für einen perfekten Kreis
-            className="rounded-full h-12 w-12 p-0"
+            className="rounded-full h-12 w-12 mt-3"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >
             <Download className="h-6 w-6" />
