@@ -159,7 +159,7 @@ export default function CollageCreator() {
           Collage a trois
         </h1>
 
-        <div className="rounded-2xl overflow-hidden border border-border bg-card">
+        <div className="rounded-2xl overflow-hidden border aspect-9/16 border-border bg-card">
           {[0, 1, 2].map((index) => (
             <div key={index} className={index !== 2 ? "border-b border-border" : ""}>
               {images[index] ? (
