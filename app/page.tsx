@@ -171,7 +171,6 @@ export default function CollageCreator() {
                   />
                   <button
                     onClick={() => removeImage(index)}
-                    {/* Geänderte Klasse für mobile Sichtbarkeit */}
                     className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                     aria-label="Remove image"
                   >
