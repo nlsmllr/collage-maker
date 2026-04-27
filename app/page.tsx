@@ -2,30 +2,152 @@
 
 import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, X, Plus } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog"
+import { Download, X, Plus, Move, Check } from "lucide-react"
+
+interface CropOffset {
+  x: number // -1 to 1, where 0 is centered
+  y: number // -1 to 1, where 0 is centered
+}
 
 interface ImageData {
   file: File
   preview: string
+  cropOffset: CropOffset
+  naturalWidth?: number
+  naturalHeight?: number
+}
+
+// Crop editor with drag-to-pan functionality
+function CropEditor({
+  image,
+  onSave,
+  onClose,
+}: {
+  image: ImageData
+  onSave: (offset: CropOffset) => void
+  onClose: () => void
+}) {
+  const [offset, setOffset] = useState<CropOffset>(image.cropOffset)
+  const [isDragging, setIsDragging] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const startPosRef = useRef({ x: 0, y: 0 })
+  const startOffsetRef = useRef({ x: 0, y: 0 })
+
+  // Calculate the aspect ratios to determine pan limits
+  const containerAspect = 9 / 5 // Preview aspect (roughly 9:5 for the crop area)
+  const imageAspect = (image.naturalWidth || 1) / (image.naturalHeight || 1)
+  
+  // Determine if image is wider or taller than container aspect
+  const canPanX = imageAspect > containerAspect
+  const canPanY = imageAspect < containerAspect
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault()
+    setIsDragging(true)
+    startPosRef.current = { x: e.clientX, y: e.clientY }
+    startOffsetRef.current = { ...offset }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging || !containerRef.current) return
+    
+    const container = containerRef.current
+    const deltaX = e.clientX - startPosRef.current.x
+    const deltaY = e.clientY - startPosRef.current.y
+    
+    // Scale delta to offset range (-1 to 1)
+    // More movement needed for larger pans
+    const sensitivity = 3
+    const newX = canPanX 
+      ? Math.max(-1, Math.min(1, startOffsetRef.current.x - (deltaX / container.offsetWidth) * sensitivity))
+      : 0
+    const newY = canPanY
+      ? Math.max(-1, Math.min(1, startOffsetRef.current.y - (deltaY / container.offsetHeight) * sensitivity))
+      : 0
+    
+    setOffset({ x: newX, y: newY })
+  }
+
+  const handlePointerUp = () => {
+    setIsDragging(false)
+  }
+
+  // Calculate transform for preview
+  const getTransform = () => {
+    // Scale to cover, then apply offset
+    const maxOffsetPercent = 20 // Max pan percentage
+    const x = offset.x * maxOffsetPercent
+    const y = offset.y * maxOffsetPercent
+    return `translate(${-x}%, ${-y}%)`
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div 
+        ref={containerRef}
+        className="relative w-full aspect-[9/5] overflow-hidden rounded-lg bg-muted cursor-move touch-none select-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      >
+        <img
+          src={image.preview}
+          alt="Crop preview"
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+          style={{ transform: getTransform() }}
+          draggable={false}
+        />
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="bg-black/50 text-white text-xs px-2 py-1 rounded-full flex items-center gap-1.5 opacity-60">
+            <Move className="w-3 h-3" />
+            <span>Drag to adjust</span>
+          </div>
+        </div>
+      </div>
+      
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button variant="outline" onClick={onClose}>Cancel</Button>
+        </DialogClose>
+        <Button onClick={() => onSave(offset)}>
+          <Check className="w-4 h-4 mr-2" />
+          Apply
+        </Button>
+      </DialogFooter>
+    </div>
+  )
 }
 
 export default function CollageCreator() {
   const [images, setImages] = useState<(ImageData | null)[]>([null, null, null])
   const [collageUrl, setCollageUrl] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
+  const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null])
 
   const handleImageUpload = useCallback((index: number, file: File) => {
     const reader = new FileReader()
     reader.onload = (e) => {
-      const newImages = [...images]
-      newImages[index] = {
-        file,
-        preview: e.target?.result as string,
+      const preview = e.target?.result as string
+      // Load image to get natural dimensions
+      const img = new window.Image()
+      img.onload = () => {
+        const newImages = [...images]
+        newImages[index] = {
+          file,
+          preview,
+          cropOffset: { x: 0, y: 0 },
+          naturalWidth: img.naturalWidth,
+          naturalHeight: img.naturalHeight,
+        }
+        setImages(newImages)
+        setCollageUrl(null)
       }
-      setImages(newImages)
-      setCollageUrl(null)
+      img.src = preview
     }
     reader.readAsDataURL(file)
   }, [images])
@@ -46,6 +168,17 @@ export default function CollageCreator() {
       fileInputRefs.current[index]!.value = ""
     }
   }
+
+  const updateCropOffset = useCallback((index: number, offset: CropOffset) => {
+    setImages(prev => {
+      const newImages = [...prev]
+      if (newImages[index]) {
+        newImages[index] = { ...newImages[index]!, cropOffset: offset }
+      }
+      return newImages
+    })
+    setCollageUrl(null)
+  }, [])
 
   const generateCollage = async () => {
     if (!images.every((img) => img !== null)) return
@@ -87,8 +220,13 @@ export default function CollageCreator() {
         const scale = Math.max(scaleX, scaleY)
         const scaledWidth = img.width * scale
         const scaledHeight = img.height * scale
-        const offsetX = (collageWidth - scaledWidth) / 2
-        const offsetY = (imageHeight - scaledHeight) / 2
+        
+        // Apply crop offset
+        const imageData = images[index]!
+        const maxOffsetX = (scaledWidth - collageWidth) / 2
+        const maxOffsetY = (scaledHeight - imageHeight) / 2
+        const offsetX = (collageWidth - scaledWidth) / 2 + (imageData.cropOffset.x * maxOffsetX)
+        const offsetY = (imageHeight - scaledHeight) / 2 + (imageData.cropOffset.y * maxOffsetY)
 
         ctx.save()
         ctx.beginPath()
@@ -168,7 +306,19 @@ export default function CollageCreator() {
                     src={images[index]!.preview}
                     alt={`Image ${index + 1}`}
                     className="h-32 w-full object-cover"
+                    style={{
+                      objectPosition: `${50 + images[index]!.cropOffset.x * 25}% ${50 + images[index]!.cropOffset.y * 25}%`
+                    }}
                   />
+                  <div className="absolute inset-0 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={() => setEditingIndex(index)}
+                      className="rounded-full bg-black/50 p-1.5 text-white hover:bg-black/70 transition-colors"
+                      aria-label="Adjust crop"
+                    >
+                      <Move className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                   <button
                     onClick={() => removeImage(index)}
                     className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
@@ -211,6 +361,27 @@ export default function CollageCreator() {
         )}
 
         <canvas ref={canvasRef} className="hidden" />
+
+        {/* Crop Editor Dialog */}
+        <Dialog open={editingIndex !== null} onOpenChange={(open) => !open && setEditingIndex(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Adjust Crop</DialogTitle>
+            </DialogHeader>
+            {editingIndex !== null && images[editingIndex] && (
+              <CropEditor
+                image={images[editingIndex]!}
+                onSave={(offset) => {
+                  updateCropOffset(editingIndex, offset)
+                  setEditingIndex(null)
+                  // Regenerate collage after crop adjustment
+                  setTimeout(() => generateCollage(), 100)
+                }}
+                onClose={() => setEditingIndex(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </main>
   )
