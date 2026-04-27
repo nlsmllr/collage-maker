@@ -155,7 +155,7 @@ export default function CollageCreator() {
   return (
     <main className="bg-background flex items-center justify-center pt-20 p-6">
       <div className="w-full max-w-sm">
-        <h1 className="text-xl uppercase font-semibold tracking-widest text-foreground mb-6 text-center">
+        <h1 className="text-xl uppercase font-semibold tracking-tight text-foreground mb-6 text-center">
           Collage a trois
         </h1>
 
