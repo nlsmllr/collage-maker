@@ -194,7 +194,7 @@ export default function CollageCreator() {
             className="rounded-full h-12 w-12 mt-4 md:mt-6"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
           >
-            <Download className="h-6 w-6" />
+            <Download className="h-8 w-8" />
           </Button>
 
           {isGenerating && (
