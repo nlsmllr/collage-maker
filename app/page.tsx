@@ -1,153 +1,135 @@
-"use client"
+"use client";
 
-import { useState, useRef, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Download, X, Plus } from "lucide-react"
+import { useState, useRef, useCallback } from "react";
+import { Button } from "@/components/ui/button";
+import { Download, X, Plus, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface ImageData {
-  file: File
-  preview: string
+  file: File;
+  preview: string;
 }
 
 export default function CollageCreator() {
-  const [images, setImages] = useState<(ImageData | null)[]>([null, null, null])
-  const [collageUrl, setCollageUrl] = useState<string | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null])
+  const [images, setImages] = useState<(ImageData | null)[]>([null, null, null]);
+  const [collageUrl, setCollageUrl] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null]);
 
   const handleImageUpload = useCallback((index: number, file: File) => {
-    const reader = new FileReader()
+    const reader = new FileReader();
     reader.onload = (e) => {
-      const newImages = [...images]
+      const newImages = [...images];
       newImages[index] = {
         file,
         preview: e.target?.result as string,
-      }
-      setImages(newImages)
-      setCollageUrl(null)
-    }
-    reader.readAsDataURL(file)
-  }, [images])
+      };
+      setImages(newImages);
+      setCollageUrl(null);
+    };
+    reader.readAsDataURL(file);
+  }, [images]);
 
   const handleFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      handleImageUpload(index, file)
+      handleImageUpload(index, file);
     }
-  }
+  };
 
   const removeImage = (index: number) => {
-    const newImages = [...images]
-    newImages[index] = null
-    setImages(newImages)
-    setCollageUrl(null)
-    if (fileInputRefs.current[index]) {
-      fileInputRefs.current[index]!.value = ""
-    }
-  }
+    const newImages = [...images];
+    newImages[index] = null;
+    setImages(newImages);
+    setCollageUrl(null);
+  };
 
   const generateCollage = async () => {
-    if (!images.every((img) => img !== null)) return
+    if (!images.every((img) => img !== null)) return;
 
-    setIsGenerating(true)
+    setIsGenerating(true);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    const collageWidth = 1800;
+    const collageHeight = 3200;
+    const imageHeight = collageHeight / 3;
 
-    const collageWidth = 1800
-    const collageHeight = 3200
-    const imageHeight = collageHeight / 3
-
-    canvas.width = collageWidth
-    canvas.height = collageHeight
+    canvas.width = collageWidth;
+    canvas.height = collageHeight;
 
     const loadImage = (src: string): Promise<HTMLImageElement> => {
       return new Promise((resolve, reject) => {
-        const img = new Image()
-        img.crossOrigin = "anonymous"
-        img.onload = () => resolve(img)
-        img.onerror = reject
-        img.src = src
-      })
-    }
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    };
 
     try {
       const loadedImages = await Promise.all(
         images.map((img) => loadImage(img!.preview))
-      )
+      );
 
       loadedImages.forEach((img, index) => {
-        const y = index * imageHeight
-        const scaleX = collageWidth / img.width
-        const scaleY = imageHeight / img.height
-        const scale = Math.max(scaleX, scaleY)
-        const scaledWidth = img.width * scale
-        const scaledHeight = img.height * scale
-        const offsetX = (collageWidth - scaledWidth) / 2
-        const offsetY = (imageHeight - scaledHeight) / 2
+        const y = index * imageHeight;
+        const scaleX = collageWidth / img.width;
+        const scaleY = imageHeight / img.height;
+        const scale = Math.max(scaleX, scaleY);
+        const scaledWidth = img.width * scale;
+        const scaledHeight = img.height * scale;
+        const offsetX = (collageWidth - scaledWidth) / 2;
+        const offsetY = (imageHeight - scaledHeight) / 2;
 
-        ctx.save()
-        ctx.beginPath()
-        ctx.rect(0, y, collageWidth, imageHeight)
-        ctx.clip()
-        ctx.drawImage(img, offsetX, y + offsetY, scaledWidth, scaledHeight)
-        ctx.restore()
-      })
+        ctx.save();
+        ctx.rect(0, y, collageWidth, imageHeight);
+        ctx.clip();
+        ctx.drawImage(img, offsetX, y + offsetY, scaledWidth, scaledHeight);
+        ctx.restore();
+      });
 
-      const url = canvas.toDataURL("image/png", 1.0)
-      setCollageUrl(url)
+      const url = canvas.toDataURL("image/png", 1.0);
+      setCollageUrl(url);
     } catch (error) {
-      console.error("Error generating collage:", error)
+      console.error("Error generating collage:", error);
     } finally {
-      setIsGenerating(false)
+      setIsGenerating(false);
     }
-  }
+  };
 
   const downloadCollage = async () => {
-    if (!collageUrl) return
+    if (!collageUrl) return;
+    const response = await fetch(collageUrl);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "collage-9x16.png";
+    link.href = blobUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(blobUrl);
+  };
 
-    const response = await fetch(collageUrl)
-    const blob = await response.blob()
-    const file = new File([blob], "collage-9x16.png", { type: "image/png" })
+  // Auto-generate when all slots filled
+  const allImagesUploaded = images.every((img) => img !== null);
+  const prevAllUploaded = useRef(false);
 
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: "Collage",
-        })
-        return
-      } catch (err) {
-        if ((err as Error).name === "AbortError") return
-      }
-    }
-
-    const blobUrl = URL.createObjectURL(blob)
-    const link = document.createElement("a")
-    link.download = "collage-9x16.png"
-    link.href = blobUrl
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(blobUrl)
-  }
-
-  const allImagesUploaded = images.every((img) => img !== null)
-
-  const prevAllUploaded = useRef(false)
   if (allImagesUploaded && !prevAllUploaded.current && !collageUrl && !isGenerating) {
-    prevAllUploaded.current = true
-    generateCollage()
+    prevAllUploaded.current = true;
+    generateCollage();
   }
   if (!allImagesUploaded) {
-    prevAllUploaded.current = false
+    prevAllUploaded.current = false;
   }
 
-return (
+  return (
     <main className="min-h-screen bg-zinc-50 flex flex-col items-center justify-center p-6 font-sans">
       <div className="w-full max-w-[320px]">
         <div className="mb-8 text-center">
@@ -165,7 +147,7 @@ return (
             >
               {images[index] ? (
                 <div className="absolute inset-0">
-                  <img src={images[index]!.preview} alt="Preview" className="h-full w-full object-cover" />
+                  <img src={images[index]!.preview} alt={`Upload ${index + 1}`} className="h-full w-full object-cover" />
                   <button
                     onClick={() => removeImage(index)}
                     className="absolute top-3 right-3 p-1.5 rounded-full bg-white/90 text-zinc-900 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
@@ -183,10 +165,14 @@ return (
           ))}
         </div>
 
-        <div className="mt-8 flex justify-center">
-          <AnimatePresence>
-            {collageUrl && !isGenerating && (
-              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
+        <div className="mt-8 flex justify-center h-14">
+          <AnimatePresence mode="wait">
+            {isGenerating ? (
+              <motion.div key="loader" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <Loader2 className="h-10 w-10 animate-spin text-zinc-400" />
+              </motion.div>
+            ) : collageUrl ? (
+              <motion.div key="download" initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }}>
                 <Button 
                   onClick={downloadCollage}
                   className="rounded-full h-14 w-14 bg-zinc-900 hover:bg-black shadow-lg"
@@ -194,10 +180,7 @@ return (
                   <Download className="h-6 w-6 text-white" />
                 </Button>
               </motion.div>
-            )}
-            {isGenerating && (
-              <Loader2 className="h-10 w-10 animate-spin text-zinc-400" />
-            )}
+            ) : null}
           </AnimatePresence>
         </div>
       </div>
