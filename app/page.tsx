@@ -156,7 +156,7 @@ export default function CollageCreator() {
     <main className="bg-background flex items-center justify-center pt-20 p-6">
       <div className="w-full max-w-sm">
         <h1 className="text-xl uppercase font-semibold tracking-widest text-foreground mb-6 text-center">
-          Collage-a-trois
+          Collage a trois
         </h1>
 
         <div className="rounded-2xl overflow-hidden border border-border bg-card">
