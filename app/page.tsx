@@ -110,10 +110,12 @@ export default function CollageCreator() {
   const downloadCollage = async () => {
     if (!collageUrl) return
 
+    // Convert data URL to blob for better mobile support
     const response = await fetch(collageUrl)
     const blob = await response.blob()
     const file = new File([blob], "collage-9x16.png", { type: "image/png" })
 
+    // Try Web Share API first (works great on mobile)
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({
@@ -122,10 +124,12 @@ export default function CollageCreator() {
         })
         return
       } catch (err) {
+        // User cancelled or share failed, fall through to download
         if ((err as Error).name === "AbortError") return
       }
     }
 
+    // Fallback: create blob URL and download
     const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.download = "collage-9x16.png"
@@ -138,6 +142,7 @@ export default function CollageCreator() {
 
   const allImagesUploaded = images.every((img) => img !== null)
 
+  // Auto-generate when all images are uploaded
   const prevAllUploaded = useRef(false)
   if (allImagesUploaded && !prevAllUploaded.current && !collageUrl && !isGenerating) {
     prevAllUploaded.current = true
@@ -148,19 +153,16 @@ export default function CollageCreator() {
   }
 
   return (
-    <main className="bg-background flex items-center justify-center pt-20 p-6">
+    <main className="bg-background flex items-center justify-center p-6">
       <div className="w-full max-w-sm">
         <h1 className="text-3xl uppercase font-semibold tracking-tight text-foreground mb-6 text-center">
           Collage a trois
         </h1>
 
-        {/* Card Container mit 9:16 Seitenverhältnis und Flex-Column */}
         <div className="rounded-2xl overflow-hidden border border-border bg-card w-full aspect-[9/16] flex flex-col">
           {[0, 1, 2].map((index) => (
-            // Jeder Slot bekommt flex-1, um sich exakt zu dritteln
             <div key={index} className={`relative flex-1 ${index !== 2 ? "border-b border-border" : ""}`}>
               {images[index] ? (
-                // Absolute Positionierung verhindert, dass das Bild das Layout verschiebt
                 <div className="absolute inset-0 group">
                   <img
                     src={images[index]!.preview}
@@ -191,16 +193,15 @@ export default function CollageCreator() {
           ))}
         </div>
 
-        {collageUrl && (
-          <Button
-            onClick={downloadCollage}
-            className="w-full mt-6"
-            size="lg"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Download
-          </Button>
-        )}
+        <Button
+          onClick={downloadCollage}
+          className="w-full mt-6"
+          size="lg"
+          disabled={!allImagesUploaded || isGenerating || !collageUrl}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Download
+        </Button>
 
         {isGenerating && (
           <p className="text-center text-sm text-muted-foreground mt-6">
