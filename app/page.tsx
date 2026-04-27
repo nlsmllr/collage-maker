@@ -110,12 +110,10 @@ export default function CollageCreator() {
   const downloadCollage = async () => {
     if (!collageUrl) return
 
-    // Convert data URL to blob for better mobile support
     const response = await fetch(collageUrl)
     const blob = await response.blob()
     const file = new File([blob], "collage-9x16.png", { type: "image/png" })
 
-    // Try Web Share API first (works great on mobile)
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({
@@ -124,12 +122,10 @@ export default function CollageCreator() {
         })
         return
       } catch (err) {
-        // User cancelled or share failed, fall through to download
         if ((err as Error).name === "AbortError") return
       }
     }
 
-    // Fallback: create blob URL and download
     const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
     link.download = "collage-9x16.png"
@@ -142,7 +138,6 @@ export default function CollageCreator() {
 
   const allImagesUploaded = images.every((img) => img !== null)
 
-  // Auto-generate when all images are uploaded
   const prevAllUploaded = useRef(false)
   if (allImagesUploaded && !prevAllUploaded.current && !collageUrl && !isGenerating) {
     prevAllUploaded.current = true
@@ -153,13 +148,14 @@ export default function CollageCreator() {
   }
 
   return (
-    <main className="bg-background flex items-center justify-center p-6">
-      <div className="w-full max-w-sm">
-        <h1 className="text-3xl uppercase font-semibold tracking-tight text-foreground mb-6 text-center">
+    // fixed inset-0 und overflow-hidden verhindern das Scrollen auf der gesamten Seite
+    <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-[min(100%,350px)] flex flex-col h-full max-h-[850px] justify-center">
+        <h1 className="text-2xl md:text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
           Collage a trois
         </h1>
 
-        <div className="rounded-2xl overflow-hidden border border-border bg-card w-full aspect-[9/16] flex flex-col">
+        <div className="rounded-2xl overflow-hidden border border-border bg-card w-full aspect-[9/16] flex flex-col shrink">
           {[0, 1, 2].map((index) => (
             <div key={index} className={`relative flex-1 ${index !== 2 ? "border-b border-border" : ""}`}>
               {images[index] ? (
@@ -193,21 +189,23 @@ export default function CollageCreator() {
           ))}
         </div>
 
-        <Button
-          onClick={downloadCollage}
-          className="w-full mt-6"
-          size="lg"
-          disabled={!allImagesUploaded || isGenerating || !collageUrl}
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Download
-        </Button>
+        <div className="shrink-0">
+          <Button
+            onClick={downloadCollage}
+            className="w-full mt-4 md:mt-6"
+            size="lg"
+            disabled={!allImagesUploaded || isGenerating || !collageUrl}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download
+          </Button>
 
-        {isGenerating && (
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Creating...
-          </p>
-        )}
+          {isGenerating && (
+            <p className="text-center text-sm text-muted-foreground mt-2 md:mt-4">
+              Creating...
+            </p>
+          )}
+        </div>
 
         <canvas ref={canvasRef} className="hidden" />
       </div>
