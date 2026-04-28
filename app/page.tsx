@@ -172,7 +172,7 @@ export default function CollageCreator() {
                   </button>
                 </div>
               ) : (
-                <label className="absolute inset-0 flex cursor-pointer items-center justify-center neu-pressed bg-background rounded-2xl transition-all">
+                <label className="absolute inset-0 flex cursor-pointer items-center justify-center neu-relief rounded-2xl transition-all">
                   <div className="neu-convex rounded-full p-4 transition-all hover:scale-95 active:shadow-none">
                     <Plus className="h-6 w-6 text-muted-foreground" />
                   </div>
