@@ -1,8 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback } from "react"
-import { Button } from "@/components/ui/button"
-import { Download, X, Plus } from "lucide-react"
+import { X, Plus } from "lucide-react"
 
 interface ImageData {
   file: File
@@ -150,13 +149,13 @@ export default function CollageCreator() {
   return (
     <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-[min(100%,350px)] flex flex-col h-full max-h-[850px] justify-center">
-        <h1 className="text-3xl uppercase font-semibold tracking-tight text-foreground mb-4 md:mb-6 text-center shrink-0">
+        <h1 className="text-2xl uppercase font-bold tracking-wide text-foreground mb-6 md:mb-8 text-center shrink-0">
           Collage a trois
         </h1>
 
-        <div className="rounded-2xl overflow-hidden border border-border bg-card w-full aspect-[9/16] flex flex-col shrink">
+        <div className="neu-pressed rounded-3xl overflow-hidden bg-background w-full aspect-[9/16] flex flex-col shrink p-1">
           {[0, 1, 2].map((index) => (
-            <div key={index} className={`relative flex-1 ${index !== 2 ? "border-b border-border" : ""}`}>
+            <div key={index} className={`relative flex-1 ${index === 0 ? "rounded-t-2xl" : ""} ${index === 2 ? "rounded-b-2xl" : ""} overflow-hidden ${index !== 2 ? "mb-1" : ""}`}>
               {images[index] ? (
                 <div className="absolute inset-0 group">
                   <img
@@ -166,15 +165,17 @@ export default function CollageCreator() {
                   />
                   <button
                     onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
+                    className="absolute top-2 right-2 neu-convex rounded-full bg-background p-2 text-foreground opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all hover:scale-95 active:neu-pressed"
                     aria-label="Remove image"
                   >
-                    <X className="h-3.5 w-3.5" />
+                    <X className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
-                <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <Plus className="h-5 w-5 text-muted-foreground/50" />
+                <label className="absolute inset-0 flex cursor-pointer items-center justify-center bg-background transition-all hover:brightness-95">
+                  <div className="neu-convex rounded-full p-4 transition-all hover:scale-95 active:neu-pressed">
+                    <Plus className="h-6 w-6 text-muted-foreground" />
+                  </div>
                   <input
                     ref={(el) => { fileInputRefs.current[index] = el }}
                     type="file"
@@ -188,13 +189,14 @@ export default function CollageCreator() {
           ))}
         </div>
 
-        <div className="shrink-0 flex flex-col items-center w-full">
-          <Button
+        <div className="shrink-0 flex flex-col items-center w-full mt-6 md:mt-8">
+          <button
             onClick={downloadCollage}
-            className="rounded-3xl h-12 w-full font-semibold uppercase mt-4 md:mt-6"
             disabled={!allImagesUploaded || isGenerating || !collageUrl}
-          >Download
-          </Button>
+            className="neu-convex rounded-2xl h-14 w-full font-bold uppercase tracking-wide text-foreground bg-background transition-all hover:scale-[0.98] active:neu-pressed disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+          >
+            Download
+          </button>
         </div>
 
         <canvas ref={canvasRef} className="hidden" />
