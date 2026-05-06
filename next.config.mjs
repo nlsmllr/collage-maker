@@ -53,7 +53,7 @@ const withPWA = withPWAInit({
   register: true,
   skipWaiting: true,
   fallbacks: {
-    document: "/offline",
+    document: "/offline.html",
   },
   cacheStartUrl: true,
   dynamicStartUrl: false,
