@@ -16,3 +16,4 @@ node_modules
 .DS_Store
 public/sw.js
 public/workbox-*.js
+public/fallback-*.js
