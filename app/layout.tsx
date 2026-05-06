@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
@@ -9,6 +9,7 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: 'Collage a Trois',
   description: 'Collage creator',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: [
       {
@@ -26,6 +27,15 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Collage',
+  },
+}
+
+export const viewport: Viewport = {
+  themeColor: '#0a0a0a',
 }
 
 export default function RootLayout({
