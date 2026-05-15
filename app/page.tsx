@@ -112,7 +112,7 @@ export default function CollageCreator() {
 
     const response = await fetch(collageUrl)
     const blob = await response.blob()
-    const file = new File([blob], "collage-9x16.png", { type: "image/png" })
+    const file = new File([blob], "collage-a-trois-nlsmllr.png", { type: "image/png" })
 
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
