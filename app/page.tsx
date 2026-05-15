@@ -127,7 +127,7 @@ export default function CollageCreator() {
 
     const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
-    link.download = "collage-9x16.png"
+    link.download = "collage-a-trois-nlsmllr.png"
     link.href = blobUrl
     document.body.appendChild(link)
     link.click()
