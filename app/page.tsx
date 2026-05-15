@@ -117,8 +117,7 @@ export default function CollageCreator() {
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({
-          files: [file],
-          title: "Collage",
+          files: [file]
         })
         return
       } catch (err) {
