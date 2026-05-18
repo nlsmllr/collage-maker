@@ -82,7 +82,7 @@ export default function CollageCreator() {
     const dy = e.clientY - startY
 
     // Empfindlichkeit für das Ziehen (anpassbar)
-    const sensitivity = 0.5
+    const sensitivity = 0.25
 
     const newX = Math.max(0, Math.min(100, initPosX - dx * sensitivity))
     const newY = Math.max(0, Math.min(100, initPosY - dy * sensitivity))
