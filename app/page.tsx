@@ -182,7 +182,7 @@ export default function CollageCreator() {
 
     const response = await fetch(collageUrl)
     const blob = await response.blob()
-    const file = new File([blob], "collage-a-trois.png", { type: "image/png" })
+    const file = new File([blob], "collage-a-trois-by-nlsmllr.png", { type: "image/png" })
 
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
@@ -195,7 +195,7 @@ export default function CollageCreator() {
 
     const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
-    link.download = "collage-a-trois.png"
+    link.download = "collage-a-trois-by-nlsmllr.png"
     link.href = blobUrl
     document.body.appendChild(link)
     link.click()
