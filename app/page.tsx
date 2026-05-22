@@ -150,12 +150,17 @@ export default function CollageCreator() {
       const offsetX = -(posX / 100) * maxOffsetX
       const offsetY = -(posY / 100) * maxOffsetY
 
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(0, y, canvasWidth, mediaHeight)
-      ctx.clip()
-      ctx.drawImage(el, offsetX, y + offsetY, scaledWidth, scaledHeight)
-      ctx.restore()
+      // OPTIMIZATION: Calculate exact source crop instead of using expensive ctx.clip()
+      const sx = Math.max(0, (-offsetX) / scale)
+      const sy = Math.max(0, (-offsetY) / scale)
+      const sWidth = Math.min(natWidth, canvasWidth / scale)
+      const sHeight = Math.min(natHeight, mediaHeight / scale)
+
+      ctx.drawImage(
+        el, 
+        sx, sy, sWidth, sHeight, // Source crop
+        0, y, canvasWidth, mediaHeight // Destination position & size
+      )
     })
   }, [media])
 
@@ -192,7 +197,9 @@ export default function CollageCreator() {
     setIsGenerating(true)
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext("2d")
+    
+    // OPTIMIZATION: Disable alpha channel for faster rendering
+    const ctx = canvas.getContext("2d", { alpha: false })
     if (!ctx) return
 
     const collageWidth = 1800
@@ -222,7 +229,9 @@ export default function CollageCreator() {
 
     const canvas = canvasRef.current
     if (!canvas) return
-    const ctx = canvas.getContext("2d")
+    
+    // OPTIMIZATION: Disable alpha channel for faster rendering
+    const ctx = canvas.getContext("2d", { alpha: false })
     if (!ctx) return
 
     const collageWidth = 1800
@@ -242,13 +251,11 @@ export default function CollageCreator() {
               const onSeeked = () => {
                 videoEl.removeEventListener('seeked', onSeeked);
                 videoEl.play().catch(() => {});
-                // requestAnimationFrame ensures the visual DOM has updated the frame
                 requestAnimationFrame(() => resolve());
               };
               
               videoEl.addEventListener('seeked', onSeeked);
               
-              // Fallback timeout in case the seeked event fails to fire
               setTimeout(() => {
                 videoEl.removeEventListener('seeked', onSeeked);
                 videoEl.play().catch(() => {});
@@ -297,10 +304,23 @@ export default function CollageCreator() {
       setRecordingProgress(0)
     }
 
+    // OPTIMIZATION: Throttle canvas updates to exactly 30 FPS
     let animationFrameId: number
+    const fps = 30
+    const interval = 1000 / fps
+    let then = Date.now()
+
     const drawFrame = () => {
-      drawToCanvas(ctx, collageWidth, mediaHeight)
       animationFrameId = requestAnimationFrame(drawFrame)
+      
+      const now = Date.now()
+      const elapsed = now - then
+
+      // Only draw when enough time has passed (~33.3ms)
+      if (elapsed >= interval) {
+        then = now - (elapsed % interval)
+        drawToCanvas(ctx, collageWidth, mediaHeight)
+      }
     }
 
     recorder.start()
