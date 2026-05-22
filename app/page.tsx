@@ -267,9 +267,19 @@ export default function CollageCreator() {
     );
 
     // 2. Safely start the recorder now that the videos are visually at frame 0
-    const stream = canvas.captureStream(60)
+    const stream = canvas.captureStream(30)
     const mimeType = getSupportedMimeType()
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+    
+    // Request a high bitrate to preserve quality at 1800x3200 resolution
+    const recorderOptions: MediaRecorderOptions = {
+      videoBitsPerSecond: 10000000
+    }
+    
+    if (mimeType) {
+      recorderOptions.mimeType = mimeType
+    }
+
+    const recorder = new MediaRecorder(stream, recorderOptions)
     const chunks: BlobPart[] = []
 
     recorder.ondataavailable = e => {
@@ -296,7 +306,7 @@ export default function CollageCreator() {
     recorder.start()
     drawFrame()
 
-    const duration = 15000 // Fixed 5 second export duration
+    const duration = 15000 // 15 second export duration
     const startTime = Date.now()
 
     const updateProgress = () => {
