@@ -159,10 +159,14 @@ export default function CollageCreator() {
     })
   }, [media])
 
-  const downloadBlob = async (blob: Blob, filename: string) => {
-    if (navigator.share && navigator.canShare?.({ files: [new File([blob], filename, { type: blob.type })] })) {
+  // Identical to your original download behavior
+  const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
+    const filename = `collage-a-trois-by-nlsmllr.${extension}`
+    const file = new File([blob], filename, { type: mimeType })
+
+    if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
-        await navigator.share({ files: [new File([blob], filename, { type: blob.type })] })
+        await navigator.share({ files: [file] })
         return
       } catch (err) {
         if ((err as Error).name === "AbortError") return
@@ -196,13 +200,14 @@ export default function CollageCreator() {
     drawToCanvas(ctx, collageWidth, mediaHeight)
 
     canvas.toBlob((blob) => {
-      if (blob) downloadBlob(blob, "collage-a-trois.png")
+      if (blob) exportFile(blob, "png", "image/png")
       setIsGenerating(false)
     }, "image/png", 1.0)
   }
 
   const getSupportedMimeType = () => {
-    const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+    // Prioritize MP4 and MOV formats
+    const types = ['video/mp4', 'video/quicktime', 'video/webm']
     return types.find(type => MediaRecorder.isTypeSupported(type)) || ''
   }
 
@@ -232,10 +237,11 @@ export default function CollageCreator() {
     }
 
     recorder.onstop = () => {
-      const exportMime = mimeType || 'video/webm'
+      const exportMime = mimeType || 'video/mp4'
       const blob = new Blob(chunks, { type: exportMime })
-      const ext = exportMime.includes('mp4') ? 'mp4' : 'webm'
-      downloadBlob(blob, `collage-a-trois.${ext}`)
+      const ext = exportMime.includes('quicktime') ? 'mov' : exportMime.includes('webm') ? 'webm' : 'mp4'
+      
+      exportFile(blob, ext, exportMime)
       
       setIsRecording(false)
       setRecordingProgress(0)
