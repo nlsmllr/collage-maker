@@ -1,25 +1,28 @@
 "use client"
 
-import { useState, useRef, useCallback, useEffect } from "react"
+import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Download, X, Plus, Move } from "lucide-react"
+import { X, Plus, Move } from "lucide-react"
 
-interface ImageData {
+interface MediaData {
   file: File
   preview: string
+  type: 'image' | 'video'
   positionX: number
   positionY: number
 }
 
 export default function CollageCreator() {
-  const [images, setImages] = useState<(ImageData | null)[]>([null, null, null])
-  const [collageUrl, setCollageUrl] = useState<string | null>(null)
+  const [media, setMedia] = useState<(MediaData | null)[]>([null, null, null])
   const [isGenerating, setIsGenerating] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [recordingProgress, setRecordingProgress] = useState(0)
   
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null])
+  const mediaRefs = useRef<(HTMLImageElement | HTMLVideoElement | null)[]>([null, null, null])
   
-  // Ref für die Drag & Drop Logik
+  // Ref for Drag & Drop logic
   const dragRef = useRef<{
     index: number
     startX: number
@@ -28,165 +31,138 @@ export default function CollageCreator() {
     initPosY: number
   } | null>(null)
 
-  const handleImageUpload = useCallback((index: number, file: File) => {
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      const newImages = [...images]
-      newImages[index] = {
-        file,
-        preview: e.target?.result as string,
-        positionX: 50, // Standardmäßig zentriert
-        positionY: 50,
-      }
-      setImages(newImages)
-      setCollageUrl(null)
-    }
-    reader.readAsDataURL(file)
-  }, [images])
-
   const handleFileChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      handleImageUpload(index, file)
+      const isVideo = file.type.startsWith('video/')
+      const newMedia = [...media]
+      
+      // Cleanup old URL to prevent memory leaks
+      if (newMedia[index]?.preview) {
+        URL.revokeObjectURL(newMedia[index]!.preview)
+      }
+
+      newMedia[index] = {
+        file,
+        preview: URL.createObjectURL(file),
+        type: isVideo ? 'video' : 'image',
+        positionX: 50, // Center by default
+        positionY: 50,
+      }
+      setMedia(newMedia)
     }
   }
 
-  const removeImage = (index: number) => {
-    const newImages = [...images]
-    newImages[index] = null
-    setImages(newImages)
-    setCollageUrl(null)
+  const removeMedia = (index: number) => {
+    const newMedia = [...media]
+    if (newMedia[index]?.preview) {
+      URL.revokeObjectURL(newMedia[index]!.preview)
+    }
+    newMedia[index] = null
+    setMedia(newMedia)
+    
     if (fileInputRefs.current[index]) {
       fileInputRefs.current[index]!.value = ""
     }
   }
 
-  // --- Drag & Drop Handler für den Bildausschnitt ---
-  const handlePointerDown = (index: number, e: React.PointerEvent<HTMLImageElement>) => {
-    if (!images[index]) return
+  // --- Drag & Drop Handler for Image/Video Framing ---
+  const handlePointerDown = (index: number, e: React.PointerEvent<HTMLElement>) => {
+    if (!media[index]) return
     e.currentTarget.setPointerCapture(e.pointerId)
     dragRef.current = {
       index,
       startX: e.clientX,
       startY: e.clientY,
-      initPosX: images[index]!.positionX,
-      initPosY: images[index]!.positionY,
+      initPosX: media[index]!.positionX,
+      initPosY: media[index]!.positionY,
     }
   }
 
-  const handlePointerMove = (e: React.PointerEvent<HTMLImageElement>) => {
+  const handlePointerMove = (e: React.PointerEvent<HTMLElement>) => {
     if (!dragRef.current) return
     const { index, startX, startY, initPosX, initPosY } = dragRef.current
 
     const dx = e.clientX - startX
     const dy = e.clientY - startY
 
-    // Empfindlichkeit für das Ziehen (anpassbar)
+    // Sensitivity for dragging
     const sensitivity = 0.25
 
     const newX = Math.max(0, Math.min(100, initPosX - dx * sensitivity))
     const newY = Math.max(0, Math.min(100, initPosY - dy * sensitivity))
 
-    setImages((prev) => {
-      const newImages = [...prev]
-      if (newImages[index]) {
-        newImages[index] = { ...newImages[index]!, positionX: newX, positionY: newY }
+    setMedia((prev) => {
+      const newMedia = [...prev]
+      if (newMedia[index]) {
+        newMedia[index] = { ...newMedia[index]!, positionX: newX, positionY: newY }
       }
-      return newImages
+      return newMedia
     })
   }
 
-  const handlePointerUp = (e: React.PointerEvent<HTMLImageElement>) => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLElement>) => {
     if (dragRef.current) {
       e.currentTarget.releasePointerCapture(e.pointerId)
       dragRef.current = null
-      // Collage invalidieren, damit sie mit neuem Ausschnitt generiert wird
-      setCollageUrl(null) 
     }
   }
   // ------------------------------------------------
 
-  const generateCollage = useCallback(async () => {
-    if (!images.every((img) => img !== null)) return
+  const drawToCanvas = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, mediaHeight: number) => {
+    ctx.fillStyle = '#0a0a0a' // Background fill
+    ctx.fillRect(0, 0, canvasWidth, canvasWidth * (16 / 9))
 
-    setIsGenerating(true)
+    media.forEach((m, index) => {
+      if (!m) return
+      const el = mediaRefs.current[index]
+      if (!el) return
 
-    const canvas = canvasRef.current
-    if (!canvas) return
+      const posX = m.positionX
+      const posY = m.positionY
+      const y = index * mediaHeight
 
-    const ctx = canvas.getContext("2d")
-    if (!ctx) return
+      let natWidth, natHeight
 
-    const collageWidth = 1800
-    const collageHeight = 3200
-    const imageHeight = collageHeight / 3
+      if (m.type === 'video') {
+        const v = el as HTMLVideoElement
+        natWidth = v.videoWidth
+        natHeight = v.videoHeight
+      } else {
+        const i = el as HTMLImageElement
+        natWidth = i.naturalWidth
+        natHeight = i.naturalHeight
+      }
 
-    canvas.width = collageWidth
-    canvas.height = collageHeight
+      // Element might not be fully loaded yet
+      if (!natWidth || !natHeight) return
 
-    const loadImage = (src: string): Promise<HTMLImageElement> => {
-      return new Promise((resolve, reject) => {
-        const img = new Image()
-        img.crossOrigin = "anonymous"
-        img.onload = () => resolve(img)
-        img.onerror = reject
-        img.src = src
-      })
-    }
+      const scaleX = canvasWidth / natWidth
+      const scaleY = mediaHeight / natHeight
+      const scale = Math.max(scaleX, scaleY)
+      
+      const scaledWidth = natWidth * scale
+      const scaledHeight = natHeight * scale
+      
+      const maxOffsetX = scaledWidth - canvasWidth
+      const maxOffsetY = scaledHeight - mediaHeight
 
-    try {
-      const loadedImages = await Promise.all(
-        images.map((img) => loadImage(img!.preview))
-      )
+      const offsetX = -(posX / 100) * maxOffsetX
+      const offsetY = -(posY / 100) * maxOffsetY
 
-      loadedImages.forEach((img, index) => {
-        const imgData = images[index]!
-        const posX = imgData.positionX
-        const posY = imgData.positionY
+      ctx.save()
+      ctx.beginPath()
+      ctx.rect(0, y, canvasWidth, mediaHeight)
+      ctx.clip()
+      ctx.drawImage(el, offsetX, y + offsetY, scaledWidth, scaledHeight)
+      ctx.restore()
+    })
+  }, [media])
 
-        const y = index * imageHeight
-        const scaleX = collageWidth / img.width
-        const scaleY = imageHeight / img.height
-        const scale = Math.max(scaleX, scaleY)
-        
-        const scaledWidth = img.width * scale
-        const scaledHeight = img.height * scale
-        
-        // Maximal möglicher Offset (Überhang des Bildes über den Container)
-        const maxOffsetX = scaledWidth - collageWidth
-        const maxOffsetY = scaledHeight - imageHeight
-
-        // Offset basierend auf Prozentwert berechnen
-        const offsetX = -(posX / 100) * maxOffsetX
-        const offsetY = -(posY / 100) * maxOffsetY
-
-        ctx.save()
-        ctx.beginPath()
-        ctx.rect(0, y, collageWidth, imageHeight)
-        ctx.clip()
-        ctx.drawImage(img, offsetX, y + offsetY, scaledWidth, scaledHeight)
-        ctx.restore()
-      })
-
-      const url = canvas.toDataURL("image/png", 1.0)
-      setCollageUrl(url)
-    } catch (error) {
-      console.error("Error generating collage:", error)
-    } finally {
-      setIsGenerating(false)
-    }
-  }, [images])
-
-  const downloadCollage = async () => {
-    if (!collageUrl) return
-
-    const response = await fetch(collageUrl)
-    const blob = await response.blob()
-    const file = new File([blob], "collage-a-trois-by-nlsmllr.png", { type: "image/png" })
-
-    if (navigator.share && navigator.canShare?.({ files: [file] })) {
+  const downloadBlob = async (blob: Blob, filename: string) => {
+    if (navigator.share && navigator.canShare?.({ files: [new File([blob], filename, { type: blob.type })] })) {
       try {
-        await navigator.share({ files: [file] })
+        await navigator.share({ files: [new File([blob], filename, { type: blob.type })] })
         return
       } catch (err) {
         if ((err as Error).name === "AbortError") return
@@ -195,23 +171,111 @@ export default function CollageCreator() {
 
     const blobUrl = URL.createObjectURL(blob)
     const link = document.createElement("a")
-    link.download = "collage-a-trois-by-nlsmllr.png"
+    link.download = filename
     link.href = blobUrl
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    URL.revokeObjectURL(blobUrl)
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000)
   }
 
-  // Automatische Generierung durch sauberen useEffect ersetzt
-  useEffect(() => {
-    const allImagesUploaded = images.every((img) => img !== null)
-    if (allImagesUploaded && !collageUrl && !isGenerating) {
-      generateCollage()
-    }
-  }, [images, collageUrl, isGenerating, generateCollage])
+  const generateAndDownloadStatic = async () => {
+    setIsGenerating(true)
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
 
-  const allImagesUploaded = images.every((img) => img !== null)
+    const collageWidth = 1080
+    const collageHeight = 1920
+    const mediaHeight = collageHeight / 3
+
+    canvas.width = collageWidth
+    canvas.height = collageHeight
+
+    drawToCanvas(ctx, collageWidth, mediaHeight)
+
+    canvas.toBlob((blob) => {
+      if (blob) downloadBlob(blob, "collage-a-trois.png")
+      setIsGenerating(false)
+    }, "image/png", 1.0)
+  }
+
+  const getSupportedMimeType = () => {
+    const types = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+    return types.find(type => MediaRecorder.isTypeSupported(type)) || ''
+  }
+
+  const recordAndDownloadVideo = async () => {
+    setIsRecording(true)
+    setRecordingProgress(0)
+
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const collageWidth = 1080
+    const collageHeight = 1920
+    const mediaHeight = collageHeight / 3
+
+    canvas.width = collageWidth
+    canvas.height = collageHeight
+
+    const stream = canvas.captureStream(30)
+    const mimeType = getSupportedMimeType()
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
+    const chunks: BlobPart[] = []
+
+    recorder.ondataavailable = e => {
+      if (e.data.size > 0) chunks.push(e.data)
+    }
+
+    recorder.onstop = () => {
+      const exportMime = mimeType || 'video/webm'
+      const blob = new Blob(chunks, { type: exportMime })
+      const ext = exportMime.includes('mp4') ? 'mp4' : 'webm'
+      downloadBlob(blob, `collage-a-trois.${ext}`)
+      
+      setIsRecording(false)
+      setRecordingProgress(0)
+    }
+
+    let animationFrameId: number
+    const drawFrame = () => {
+      drawToCanvas(ctx, collageWidth, mediaHeight)
+      animationFrameId = requestAnimationFrame(drawFrame)
+    }
+
+    recorder.start()
+    drawFrame()
+
+    const duration = 5000 // Fixed 5 second export duration
+    const startTime = Date.now()
+
+    const updateProgress = () => {
+      const elapsed = Date.now() - startTime
+      if (elapsed >= duration) {
+         cancelAnimationFrame(animationFrameId)
+         recorder.stop()
+      } else {
+         setRecordingProgress(Math.floor((elapsed / duration) * 100))
+         requestAnimationFrame(updateProgress)
+      }
+    }
+    updateProgress()
+  }
+
+  const handleDownload = async () => {
+    const hasVideo = media.some(m => m?.type === 'video')
+    if (hasVideo) {
+      await recordAndDownloadVideo()
+    } else {
+      await generateAndDownloadStatic()
+    }
+  }
+
+  const allMediaUploaded = media.every((m) => m !== null)
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
@@ -223,32 +287,46 @@ export default function CollageCreator() {
         <div className="rounded-2xl overflow-hidden border border-border bg-card w-full aspect-[9/16] flex flex-col shrink">
           {[0, 1, 2].map((index) => (
             <div key={index} className={`relative flex-1 ${index !== 2 ? "border-b border-border" : ""}`}>
-              {images[index] ? (
+              {media[index] ? (
                 <div className="absolute inset-0 group">
-                  <img
-                    src={images[index]!.preview}
-                    alt={`Image ${index + 1}`}
-                    // touch-none ist wichtig, damit das Handy beim Wischen nicht scrollt
-                    className="h-full w-full object-cover cursor-move touch-none select-none"
-                    style={{
-                      objectPosition: `${images[index]!.positionX}% ${images[index]!.positionY}%`
-                    }}
-                    onPointerDown={(e) => handlePointerDown(index, e)}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={handlePointerUp}
-                    onPointerCancel={handlePointerUp}
-                    draggable={false}
-                  />
+                  {media[index]!.type === 'video' ? (
+                    <video
+                      ref={(el) => { mediaRefs.current[index] = el }}
+                      src={media[index]!.preview}
+                      autoPlay
+                      loop
+                      muted
+                      playsInline
+                      className="h-full w-full object-cover cursor-move touch-none select-none"
+                      style={{ objectPosition: `${media[index]!.positionX}% ${media[index]!.positionY}%` }}
+                      onPointerDown={(e) => handlePointerDown(index, e)}
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      onPointerCancel={handlePointerUp}
+                    />
+                  ) : (
+                    <img
+                      ref={(el) => { mediaRefs.current[index] = el }}
+                      src={media[index]!.preview}
+                      alt={`Image ${index + 1}`}
+                      className="h-full w-full object-cover cursor-move touch-none select-none"
+                      style={{ objectPosition: `${media[index]!.positionX}% ${media[index]!.positionY}%` }}
+                      onPointerDown={(e) => handlePointerDown(index, e)}
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={handlePointerUp}
+                      onPointerCancel={handlePointerUp}
+                      draggable={false}
+                    />
+                  )}
                   
-                  {/* Visueller Hinweis, dass man das Bild bewegen kann */}
                   <div className="absolute top-2 left-2 rounded-full bg-black/30 p-1.5 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity pointer-events-none">
                     <Move className="h-3.5 w-3.5" />
                   </div>
 
                   <button
-                    onClick={() => removeImage(index)}
+                    onClick={() => removeMedia(index)}
                     className="absolute top-2 right-2 rounded-full bg-black/50 p-1.5 text-white opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
-                    aria-label="Remove image"
+                    aria-label="Remove item"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -259,7 +337,7 @@ export default function CollageCreator() {
                   <input
                     ref={(el) => { fileInputRefs.current[index] = el }}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     onChange={(e) => handleFileChange(index, e)}
                     className="hidden"
                   />
@@ -271,10 +349,25 @@ export default function CollageCreator() {
 
         <div className="shrink-0 flex flex-col items-center w-full">
           <Button
-            onClick={downloadCollage}
-            className="rounded-3xl h-12 w-full font-semibold uppercase mt-4 md:mt-6"
-            disabled={!allImagesUploaded || isGenerating || !collageUrl}
-          >Download
+            onClick={handleDownload}
+            className="rounded-3xl h-12 w-full font-semibold uppercase mt-4 md:mt-6 relative overflow-hidden"
+            disabled={!allMediaUploaded || isGenerating || isRecording}
+          >
+            {isRecording ? (
+              <>
+                <span className="relative z-10">Recording... {recordingProgress}%</span>
+                <div 
+                  className="absolute inset-y-0 left-0 bg-primary-foreground/20 z-0 transition-all duration-75" 
+                  style={{ width: `${recordingProgress}%` }} 
+                />
+              </>
+            ) : isGenerating ? (
+              'Generating...'
+            ) : media.some(m => m?.type === 'video') ? (
+              'Record & Download'
+            ) : (
+              'Download'
+            )}
           </Button>
         </div>
 
