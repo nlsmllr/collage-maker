@@ -267,7 +267,7 @@ export default function CollageCreator() {
     );
 
     // 2. Safely start the recorder now that the videos are visually at frame 0
-    const stream = canvas.captureStream(480)
+    const stream = canvas.captureStream(60)
     const mimeType = getSupportedMimeType()
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
     const chunks: BlobPart[] = []
