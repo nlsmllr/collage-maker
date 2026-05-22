@@ -159,12 +159,10 @@ export default function CollageCreator() {
     })
   }, [media])
 
-  // Identical to your original download behavior
-const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
+  const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
     const filename = `collage-a-trois-by-nlsmllr.${extension}`
     const file = new File([blob], filename, { type: mimeType })
 
-    // 1. Try to use the native Share sheet first (great for Mobile)
     if (navigator.share && navigator.canShare?.({ files: [file] })) {
       try {
         await navigator.share({ files: [file] })
@@ -174,13 +172,13 @@ const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
       }
     }
 
-    // 2. Fallback: Force a direct download by disguising the file as a generic binary stream
+    // Fallback: Force a direct download by disguising the file as a generic binary stream
     // This prevents the browser from trying to "play" the video in a new tab
     const forceDownloadBlob = new Blob([blob], { type: 'application/octet-stream' });
     const blobUrl = URL.createObjectURL(forceDownloadBlob)
     
     const link = document.createElement("a")
-    link.style.display = "none" // Keep it hidden
+    link.style.display = "none"
     link.href = blobUrl
     link.download = filename
     
@@ -198,8 +196,8 @@ const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const collageWidth = 1800
-    const collageHeight = 3200
+    const collageWidth = 1080
+    const collageHeight = 1920
     const mediaHeight = collageHeight / 3
 
     canvas.width = collageWidth
@@ -228,8 +226,8 @@ const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const collageWidth = 1800
-    const collageHeight = 3200
+    const collageWidth = 1080
+    const collageHeight = 1920
     const mediaHeight = collageHeight / 3
 
     canvas.width = collageWidth
@@ -255,6 +253,17 @@ const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
       setRecordingProgress(0)
     }
 
+    // Reset all videos to the beginning right before we start recording
+    media.forEach((m, index) => {
+      if (m?.type === 'video') {
+        const videoEl = mediaRefs.current[index] as HTMLVideoElement;
+        if (videoEl) {
+          videoEl.currentTime = 0;
+          videoEl.play().catch(e => console.error("Playback failed:", e));
+        }
+      }
+    });
+
     let animationFrameId: number
     const drawFrame = () => {
       drawToCanvas(ctx, collageWidth, mediaHeight)
@@ -264,7 +273,7 @@ const exportFile = async (blob: Blob, extension: string, mimeType: string) => {
     recorder.start()
     drawFrame()
 
-    const duration = 15000 // Fixed 15 second export duration
+    const duration = 5000 // Fixed 5 second export duration
     const startTime = Date.now()
 
     const updateProgress = () => {
