@@ -173,7 +173,6 @@ export default function CollageCreator() {
     }
 
     // Fallback: Force a direct download by disguising the file as a generic binary stream
-    // This prevents the browser from trying to "play" the video in a new tab
     const forceDownloadBlob = new Blob([blob], { type: 'application/octet-stream' });
     const blobUrl = URL.createObjectURL(forceDownloadBlob)
     
@@ -196,8 +195,8 @@ export default function CollageCreator() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const collageWidth = 1080
-    const collageHeight = 1920
+    const collageWidth = 1800
+    const collageHeight = 3200
     const mediaHeight = collageHeight / 3
 
     canvas.width = collageWidth
@@ -226,13 +225,48 @@ export default function CollageCreator() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
-    const collageWidth = 1080
-    const collageHeight = 1920
+    const collageWidth = 1800
+    const collageHeight = 3200
     const mediaHeight = collageHeight / 3
 
     canvas.width = collageWidth
     canvas.height = collageHeight
 
+    // 1. Wait for all videos to actually seek to 0 before we start the recorder
+    await Promise.all(
+      media.map((m, index) => {
+        return new Promise<void>((resolve) => {
+          if (m?.type === 'video') {
+            const videoEl = mediaRefs.current[index] as HTMLVideoElement;
+            if (videoEl) {
+              const onSeeked = () => {
+                videoEl.removeEventListener('seeked', onSeeked);
+                videoEl.play().catch(() => {});
+                // requestAnimationFrame ensures the visual DOM has updated the frame
+                requestAnimationFrame(() => resolve());
+              };
+              
+              videoEl.addEventListener('seeked', onSeeked);
+              
+              // Fallback timeout in case the seeked event fails to fire
+              setTimeout(() => {
+                videoEl.removeEventListener('seeked', onSeeked);
+                videoEl.play().catch(() => {});
+                resolve();
+              }, 400);
+
+              videoEl.currentTime = 0;
+            } else {
+              resolve();
+            }
+          } else {
+            resolve();
+          }
+        });
+      })
+    );
+
+    // 2. Safely start the recorder now that the videos are visually at frame 0
     const stream = canvas.captureStream(30)
     const mimeType = getSupportedMimeType()
     const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
@@ -253,17 +287,6 @@ export default function CollageCreator() {
       setRecordingProgress(0)
     }
 
-    // Reset all videos to the beginning right before we start recording
-    media.forEach((m, index) => {
-      if (m?.type === 'video') {
-        const videoEl = mediaRefs.current[index] as HTMLVideoElement;
-        if (videoEl) {
-          videoEl.currentTime = 0;
-          videoEl.play().catch(e => console.error("Playback failed:", e));
-        }
-      }
-    });
-
     let animationFrameId: number
     const drawFrame = () => {
       drawToCanvas(ctx, collageWidth, mediaHeight)
@@ -273,7 +296,7 @@ export default function CollageCreator() {
     recorder.start()
     drawFrame()
 
-    const duration = 5000 // Fixed 5 second export duration
+    const duration = 15000 // Fixed 5 second export duration
     const startTime = Date.now()
 
     const updateProgress = () => {
