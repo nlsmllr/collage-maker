@@ -3,13 +3,6 @@
 import { useState, useRef, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { X, Plus, Move } from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 interface MediaData {
   file: File
@@ -24,12 +17,12 @@ export default function CollageCreator() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [recordingProgress, setRecordingProgress] = useState(0)
-  const [fps, setFps] = useState<string>("30") 
   
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRefs = useRef<(HTMLInputElement | null)[]>([null, null, null])
   const mediaRefs = useRef<(HTMLImageElement | HTMLVideoElement | null)[]>([null, null, null])
   
+  // Ref for Drag & Drop logic
   const dragRef = useRef<{
     index: number
     startX: number
@@ -44,6 +37,7 @@ export default function CollageCreator() {
       const isVideo = file.type.startsWith('video/')
       const newMedia = [...media]
       
+      // Cleanup old URL to prevent memory leaks
       if (newMedia[index]?.preview) {
         URL.revokeObjectURL(newMedia[index]!.preview)
       }
@@ -52,7 +46,7 @@ export default function CollageCreator() {
         file,
         preview: URL.createObjectURL(file),
         type: isVideo ? 'video' : 'image',
-        positionX: 50, 
+        positionX: 50, // Center by default
         positionY: 50,
       }
       setMedia(newMedia)
@@ -72,6 +66,7 @@ export default function CollageCreator() {
     }
   }
 
+  // --- Drag & Drop Handler for Image/Video Framing ---
   const handlePointerDown = (index: number, e: React.PointerEvent<HTMLElement>) => {
     if (!media[index]) return
     e.currentTarget.setPointerCapture(e.pointerId)
@@ -90,6 +85,8 @@ export default function CollageCreator() {
 
     const dx = e.clientX - startX
     const dy = e.clientY - startY
+
+    // Sensitivity for dragging
     const sensitivity = 0.25
 
     const newX = Math.max(0, Math.min(100, initPosX - dx * sensitivity))
@@ -110,9 +107,10 @@ export default function CollageCreator() {
       dragRef.current = null
     }
   }
+  // ------------------------------------------------
 
   const drawToCanvas = useCallback((ctx: CanvasRenderingContext2D, canvasWidth: number, mediaHeight: number) => {
-    ctx.fillStyle = '#0a0a0a' 
+    ctx.fillStyle = '#0a0a0a' // Background fill
     ctx.fillRect(0, 0, canvasWidth, canvasWidth * (16 / 9))
 
     media.forEach((m, index) => {
@@ -136,6 +134,7 @@ export default function CollageCreator() {
         natHeight = i.naturalHeight
       }
 
+      // Element might not be fully loaded yet
       if (!natWidth || !natHeight) return
 
       const scaleX = canvasWidth / natWidth
@@ -173,6 +172,7 @@ export default function CollageCreator() {
       }
     }
 
+    // Fallback: Force a direct download by disguising the file as a generic binary stream
     const forceDownloadBlob = new Blob([blob], { type: 'application/octet-stream' });
     const blobUrl = URL.createObjectURL(forceDownloadBlob)
     
@@ -211,6 +211,7 @@ export default function CollageCreator() {
   }
 
   const getSupportedMimeType = () => {
+    // Prioritize MP4 and MOV formats
     const types = ['video/mp4', 'video/quicktime', 'video/webm']
     return types.find(type => MediaRecorder.isTypeSupported(type)) || ''
   }
@@ -231,6 +232,7 @@ export default function CollageCreator() {
     canvas.width = collageWidth
     canvas.height = collageHeight
 
+    // 1. Wait for all videos to actually seek to 0 before we start the recorder
     await Promise.all(
       media.map((m, index) => {
         return new Promise<void>((resolve) => {
@@ -240,11 +242,13 @@ export default function CollageCreator() {
               const onSeeked = () => {
                 videoEl.removeEventListener('seeked', onSeeked);
                 videoEl.play().catch(() => {});
+                // requestAnimationFrame ensures the visual DOM has updated the frame
                 requestAnimationFrame(() => resolve());
               };
               
               videoEl.addEventListener('seeked', onSeeked);
               
+              // Fallback timeout in case the seeked event fails to fire
               setTimeout(() => {
                 videoEl.removeEventListener('seeked', onSeeked);
                 videoEl.play().catch(() => {});
@@ -262,15 +266,10 @@ export default function CollageCreator() {
       })
     );
 
-    const targetFps = Number(fps)
-    const stream = canvas.captureStream(targetFps) 
+    // 2. Safely start the recorder now that the videos are visually at frame 0
+    const stream = canvas.captureStream(240)
     const mimeType = getSupportedMimeType()
-    
-    // Provide a solid bitrate to prevent the encoder from bottlenecking
-    const options: MediaRecorderOptions = { videoBitsPerSecond: 8000000 }
-    if (mimeType) options.mimeType = mimeType
-    
-    const recorder = new MediaRecorder(stream, options)
+    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
     const chunks: BlobPart[] = []
 
     recorder.ondataavailable = e => {
@@ -289,24 +288,15 @@ export default function CollageCreator() {
     }
 
     let animationFrameId: number
-    let lastDrawTime = performance.now()
-    const fpsInterval = 1000 / targetFps
-
-    // Throttle the draw loop so we don't starve the browser's encoder thread
-    const drawFrame = (now: number) => {
+    const drawFrame = () => {
+      drawToCanvas(ctx, collageWidth, mediaHeight)
       animationFrameId = requestAnimationFrame(drawFrame)
-      const elapsed = now - lastDrawTime
-      
-      if (elapsed >= fpsInterval) {
-        lastDrawTime = now - (elapsed % fpsInterval)
-        drawToCanvas(ctx, collageWidth, mediaHeight)
-      }
     }
 
     recorder.start()
-    animationFrameId = requestAnimationFrame(drawFrame)
+    drawFrame()
 
-    const duration = 15000 
+    const duration = 15000 // Fixed 5 second export duration
     const startTime = Date.now()
 
     const updateProgress = () => {
@@ -332,7 +322,6 @@ export default function CollageCreator() {
   }
 
   const allMediaUploaded = media.every((m) => m !== null)
-  const hasVideo = media.some((m) => m?.type === 'video')
 
   return (
     <main className="fixed inset-0 overflow-hidden bg-background flex items-center justify-center p-4">
@@ -404,26 +393,10 @@ export default function CollageCreator() {
           ))}
         </div>
 
-        <div className="shrink-0 flex flex-col items-center w-full gap-3 mt-4 md:mt-6">
-          {hasVideo && (
-            <div className="flex items-center gap-3 w-full px-1">
-              <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Framerate:</span>
-              <Select value={fps} onValueChange={setFps}>
-                <SelectTrigger className="w-full bg-card">
-                  <SelectValue placeholder="Select FPS" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="24">24 FPS (Cinematic)</SelectItem>
-                  <SelectItem value="30">30 FPS (Standard)</SelectItem>
-                  <SelectItem value="60">60 FPS (Smooth)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          )}
-
+        <div className="shrink-0 flex flex-col items-center w-full">
           <Button
             onClick={handleDownload}
-            className="rounded-3xl h-12 w-full font-semibold uppercase relative overflow-hidden"
+            className="rounded-3xl h-12 w-full font-semibold uppercase mt-4 md:mt-6 relative overflow-hidden"
             disabled={!allMediaUploaded || isGenerating || isRecording}
           >
             {isRecording ? (
@@ -436,7 +409,7 @@ export default function CollageCreator() {
               </>
             ) : isGenerating ? (
               'Generating...'
-            ) : hasVideo ? (
+            ) : media.some(m => m?.type === 'video') ? (
               'Record & Download'
             ) : (
               'Download'
